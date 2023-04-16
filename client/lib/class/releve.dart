@@ -1,3 +1,5 @@
+import 'package:client/constants/app_constants.dart';
+
 /// Manipulation des relevés acquis par le capteur DHT22
 class Releve {
   final double temperature;
@@ -12,24 +14,20 @@ class Releve {
   //   this.horodatage = horodatage;
   // }
 
-  String getMinutesSecondes() {
-    return '${horodatage.minute}:${horodatage.second}';
-  }
-
   bool isTemperatureHigh() {
-    return temperature > 20;
+    return temperature > DEFAULT_TEMPERATURE_ELEVEE;
   }
 
   bool isTemperatureLow() {
-    return temperature < 0;
+    return temperature < DEFAULT_TEMPERATURE_BASSE;
   }
 
   bool isHumiditeHigh() {
-    return humidite > 70;
+    return humidite > DEFAULT_HUMIDITE_ELEVEE;
   }
 
   bool isHumiditeLow() {
-    return humidite < 40;
+    return humidite < DEFAULT_HUMIDITE_BASSE;
   }
 
   // convertions
@@ -43,6 +41,6 @@ class Releve {
 
   @override
   String toString() {
-    return 'Température: $temperature\nHumidité: $humidite\nHorodatage: ${getMinutesSecondes()}';
+    return 'Température: $temperature\nHumidité: $humidite\nHorodatage: $horodatage)}';
   }
 }

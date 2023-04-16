@@ -1,4 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:fl_chart/fl_chart.dart';
+
+import 'package:client/class/releve.dart';
+import 'package:client/utils/manipulations_releves.dart';
 
 void main() {
   runApp(const MyApp());
@@ -9,13 +15,21 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(
+    return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'Releves capteur',
       home: Scaffold(
-        body: Center(
-          child: AffichageData(),
-        ),
-      ),
+          appBar: AppBar(
+            backgroundColor: Colors.blueGrey[400],
+            title: const Text('Relevés capteur local DHT22'),
+            actions: <Widget>[
+              IconButton(
+                onPressed: () {},
+                icon: const Icon(Icons.settings),
+              )
+            ],
+          ),
+          body: const AffichageData()),
     );
   }
 }
@@ -28,21 +42,189 @@ class AffichageData extends StatefulWidget {
 }
 
 class _AffichageDataState extends State<AffichageData> {
-  // Releve _releve = Releve();
+  List<Releve> _listeReleves = [];
+  bool _highColor = false;
+
+  void getReleves() {
+    fetchReleves().then((releves) {
+      setState(() {
+        _listeReleves = releves;
+      });
+    }).catchError(
+      (err) {
+        final String message = err.toString();
+
+        AlertDialog(
+          title: const Text('Erreur lors de la récupération des données'),
+          content: SingleChildScrollView(
+            child: Text(message),
+          ),
+        );
+      },
+    );
+  }
+
+  List<FlSpot> createTemperatureSpots() {
+    List<FlSpot> spots = [];
+
+    for (int i = 0; i < _listeReleves.length; i++) {
+      spots.add(FlSpot(i.toDouble(), _listeReleves[i].temperature));
+    }
+
+    return spots;
+  }
+
+  List<FlSpot> createHumiditeSpots() {
+    List<FlSpot> spots = [];
+
+    for (int i = 0; i < _listeReleves.length; i++) {
+      spots.add(FlSpot(i.toDouble(), _listeReleves[i].humidite));
+    }
+
+    return spots;
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    getReleves();
+
+    Timer.periodic(const Duration(milliseconds: 500), (timer) {
+      setState(() {
+        _highColor = !_highColor;
+      });
+    });
+
+    Timer.periodic(const Duration(seconds: 5), (timer) {
+      getReleves();
+    });
+  }
 
   @override
   Widget build(BuildContext context) {
-    return const Row(
-      children: [
-        Expanded(
-          child: Column(
-            children: [Text('Température'), Text('30°C')],
+    return ListView(
+      children: <Widget>[
+        Container(
+          padding: const EdgeInsets.fromLTRB(0, 15, 0, 15),
+          child: Flex(
+            direction: Axis.horizontal,
+            children: <Widget>[
+              Expanded(
+                child: Column(
+                  children: <Widget>[
+                    Text(
+                      'Température',
+                      style: TextStyle(
+                        fontSize: MediaQuery.of(context).size.height * 0.05,
+                      ),
+                    ),
+                    Text(
+                      _listeReleves.isNotEmpty
+                          ? '${_listeReleves.last.temperature}°C'
+                          : '-',
+                      style: TextStyle(
+                        fontSize: MediaQuery.of(context).size.height * 0.08,
+                        color: (_listeReleves.isNotEmpty && _highColor) &&
+                                (_listeReleves.last.isTemperatureHigh() ||
+                                    _listeReleves.last.isTemperatureLow())
+                            ? Colors.red[600]
+                            : Colors.black,
+                      ),
+                    )
+                  ],
+                ),
+              ),
+              Expanded(
+                child: Column(
+                  children: <Widget>[
+                    Text(
+                      'Humidité',
+                      style: TextStyle(
+                        fontSize: MediaQuery.of(context).size.height * 0.05,
+                      ),
+                    ),
+                    Text(
+                      _listeReleves.isNotEmpty
+                          ? '${_listeReleves.last.humidite}%'
+                          : '-',
+                      style: TextStyle(
+                        fontSize: MediaQuery.of(context).size.height * 0.08,
+                        color: (_listeReleves.isNotEmpty && _highColor) &&
+                                (_listeReleves.last.isHumiditeHigh() ||
+                                    _listeReleves.last.isHumiditeLow())
+                            ? Colors.red[600]
+                            : Colors.black,
+                      ),
+                    )
+                  ],
+                ),
+              )
+            ],
           ),
         ),
-        Expanded(
-          child: Column(
-            children: [Text('Humidité'), Text('40%')],
+        Container(
+          padding: const EdgeInsets.only(top: 20),
+          child: AspectRatio(
+            aspectRatio: 3,
+            child: LineChart(
+              LineChartData(
+                titlesData: FlTitlesData(
+                  bottomTitles: AxisTitles(),
+                  topTitles: AxisTitles(),
+                  leftTitles: AxisTitles(),
+                ),
+                lineBarsData: [
+                  LineChartBarData(
+                    gradient: const LinearGradient(
+                      colors: [
+                        Color.fromRGBO(211, 47, 47, 1),
+                        Color.fromRGBO(239, 154, 154, 1),
+                      ],
+                    ),
+                    isCurved: true,
+                    barWidth: 14,
+                    spots: createTemperatureSpots(),
+                  ),
+                  LineChartBarData(
+                    gradient: const LinearGradient(
+                      colors: [
+                        Color.fromRGBO(68, 138, 255, 1),
+                        Color.fromRGBO(41, 98, 255, 1),
+                      ],
+                    ),
+                    isCurved: true,
+                    color: Colors.lightBlueAccent[400],
+                    barWidth: 8,
+                    spots: createHumiditeSpots(),
+                  )
+                ],
+              ),
+              swapAnimationDuration: const Duration(microseconds: 150),
+              swapAnimationCurve: Curves.linear,
+            ),
           ),
+          // child: LineChart(
+          //   LineChartData(
+          //     lineBarsData: [
+          //       LineChartBarData(
+          //         isCurved: true,
+          //         barWidth: 8,
+          //         spots: [
+          //           FlSpot(1, 1),
+          //           FlSpot(3, 1.5),
+          //           FlSpot(5, 1.4),
+          //           FlSpot(7, 3.4),
+          //           FlSpot(10, 2),
+          //           FlSpot(12, 2.2),
+          //           FlSpot(13, 1.8),
+          //         ],
+          //       )
+          //     ],
+          //   ),
+          //   swapAnimationDuration: const Duration(microseconds: 150),
+          //   swapAnimationCurve: Curves.linear,
+          // ),
+          // child: ,
         )
       ],
     );
