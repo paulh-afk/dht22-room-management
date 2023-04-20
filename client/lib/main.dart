@@ -54,12 +54,19 @@ class _AffichageDataState extends State<AffichageData> {
       (err) {
         final String message = err.toString();
 
-        AlertDialog(
-          title: const Text('Erreur lors de la récupération des données'),
-          content: SingleChildScrollView(
-            child: Text(message),
-          ),
-        );
+        // showDialog(
+        //   context: context,
+        //   builder: (context) {
+        //     return AlertDialog(
+        //       title: const Text('Erreur lors de la récupération des données'),
+        //       content: SingleChildScrollView(
+        //         child: Text(message),
+        //       ),
+        //     );
+        //   },
+        // );
+
+        print(message);
       },
     );
   }
@@ -87,7 +94,7 @@ class _AffichageDataState extends State<AffichageData> {
   @override
   void initState() {
     super.initState();
-    getReleves();
+    // getReleves();
 
     Timer.periodic(const Duration(milliseconds: 500), (timer) {
       setState(() {
