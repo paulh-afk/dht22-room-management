@@ -9,8 +9,11 @@ Future<List<Releve>> fetchReleves() async {
 
   Uri adr = Uri.parse('http://$ADRESSE_SERVEUR:$PORT_SERVEUR/$RELEVE_PATH');
 
-  final http.Response response = await http.get(adr).catchError(
-      (err) => throw Exception('Echec de la connexion avec le serveur!'));
+  final http.Response response = await http
+      .get(adr)
+      .timeout(const Duration(seconds: 3))
+      .catchError(
+          (err) => throw Exception('Echec de la connexion avec le serveur!'));
 
   // response Exceptions
   if (response.statusCode != 200) {

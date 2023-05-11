@@ -3,6 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 
+import 'package:client/widgets/parametrage.dart';
+
 import 'package:client/class/releve.dart';
 import 'package:client/utils/manipulations_releves.dart';
 
@@ -15,21 +17,10 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
+    return const MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Releves capteur',
-      home: Scaffold(
-          appBar: AppBar(
-            backgroundColor: Colors.blueGrey[400],
-            title: const Text('Relevés capteur local DHT22'),
-            actions: <Widget>[
-              IconButton(
-                onPressed: () {},
-                icon: const Icon(Icons.settings),
-              )
-            ],
-          ),
-          body: const AffichageData()),
+      home: AffichageData(),
     );
   }
 }
@@ -44,6 +35,7 @@ class AffichageData extends StatefulWidget {
 class _AffichageDataState extends State<AffichageData> {
   List<Releve> _listeReleves = [];
   bool _highColor = false;
+  bool _showError = false;
 
   void getReleves() {
     fetchReleves().then((releves) {
@@ -52,21 +44,60 @@ class _AffichageDataState extends State<AffichageData> {
       });
     }).catchError(
       (err) {
-        final String message = err.toString();
+        if (!_showError) {
+          showDialog(
+            context: context,
+            builder: (context) {
+              return WillPopScope(
+                onWillPop: () async {
+                  setState(() {
+                    _showError = false;
+                  });
+                  return true;
+                },
+                child: AlertDialog(
+                  title:
+                      const Text('Erreur lors de la récupération des données'),
+                  content: SingleChildScrollView(
+                    child: Text(err.toString()),
+                  ),
+                  actions: <Widget>[
+                    ButtonBar(
+                      children: [
+                        OutlinedButton(
+                          child: const Text(
+                            'Changer les paramètres de connexion',
+                          ),
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const Parametrage(),
+                              ),
+                            );
+                          },
+                        ),
+                        FilledButton(
+                          child: const Text('Réessayer'),
+                          onPressed: () {
+                            Navigator.pop(context);
+                            setState(() {
+                              _showError = false;
+                            });
+                          },
+                        )
+                      ],
+                    )
+                  ],
+                ),
+              );
+            },
+          );
 
-        // showDialog(
-        //   context: context,
-        //   builder: (context) {
-        //     return AlertDialog(
-        //       title: const Text('Erreur lors de la récupération des données'),
-        //       content: SingleChildScrollView(
-        //         child: Text(message),
-        //       ),
-        //     );
-        //   },
-        // );
-
-        print(message);
+          setState(() {
+            _showError = true;
+          });
+        }
       },
     );
   }
@@ -96,144 +127,171 @@ class _AffichageDataState extends State<AffichageData> {
     super.initState();
     // getReleves();
 
-    Timer.periodic(const Duration(milliseconds: 500), (timer) {
-      setState(() {
-        _highColor = !_highColor;
-      });
-    });
+    Timer.periodic(
+      const Duration(milliseconds: 500),
+      (timer) {
+        setState(() {
+          _highColor = !_highColor;
+        });
+      },
+    );
 
-    Timer.periodic(const Duration(seconds: 5), (timer) {
-      getReleves();
-    });
+    Timer.periodic(
+      const Duration(seconds: 5),
+      (timer) {
+        getReleves();
+      },
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return ListView(
-      children: <Widget>[
-        Container(
-          padding: const EdgeInsets.fromLTRB(0, 15, 0, 15),
-          child: Flex(
-            direction: Axis.horizontal,
-            children: <Widget>[
-              Expanded(
-                child: Column(
-                  children: <Widget>[
-                    Text(
-                      'Température',
-                      style: TextStyle(
-                        fontSize: MediaQuery.of(context).size.height * 0.05,
-                      ),
-                    ),
-                    Text(
-                      _listeReleves.isNotEmpty
-                          ? '${_listeReleves.last.temperature}°C'
-                          : '-',
-                      style: TextStyle(
-                        fontSize: MediaQuery.of(context).size.height * 0.08,
-                        color: (_listeReleves.isNotEmpty && _highColor) &&
-                                (_listeReleves.last.isTemperatureHigh() ||
-                                    _listeReleves.last.isTemperatureLow())
-                            ? Colors.red[600]
-                            : Colors.black,
-                      ),
-                    )
-                  ],
+    return Scaffold(
+      appBar: AppBar(
+        backgroundColor: (_listeReleves.isEmpty && _highColor)
+            ? Colors.red[600]
+            : Colors.blueGrey[400],
+        title: const Text('Relevés capteur local DHT22'),
+        actions: <Widget>[
+          IconButton(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const Parametrage(),
                 ),
-              ),
-              Expanded(
-                child: Column(
-                  children: <Widget>[
-                    Text(
-                      'Humidité',
-                      style: TextStyle(
-                        fontSize: MediaQuery.of(context).size.height * 0.05,
+              );
+            },
+            icon: const Icon(Icons.settings),
+          )
+        ],
+      ),
+      body: ListView(
+        children: <Widget>[
+          Container(
+            padding: const EdgeInsets.fromLTRB(0, 15, 0, 15),
+            child: Flex(
+              direction: Axis.horizontal,
+              children: <Widget>[
+                Expanded(
+                  child: Column(
+                    children: <Widget>[
+                      Text(
+                        'Température',
+                        style: TextStyle(
+                          fontSize: MediaQuery.of(context).size.height * 0.05,
+                        ),
                       ),
-                    ),
-                    Text(
-                      _listeReleves.isNotEmpty
-                          ? '${_listeReleves.last.humidite}%'
-                          : '-',
-                      style: TextStyle(
-                        fontSize: MediaQuery.of(context).size.height * 0.08,
-                        color: (_listeReleves.isNotEmpty && _highColor) &&
-                                (_listeReleves.last.isHumiditeHigh() ||
-                                    _listeReleves.last.isHumiditeLow())
-                            ? Colors.red[600]
-                            : Colors.black,
-                      ),
-                    )
-                  ],
-                ),
-              )
-            ],
-          ),
-        ),
-        Container(
-          padding: const EdgeInsets.only(top: 20),
-          child: AspectRatio(
-            aspectRatio: 3,
-            child: LineChart(
-              LineChartData(
-                titlesData: FlTitlesData(
-                  bottomTitles: AxisTitles(),
-                  topTitles: AxisTitles(),
-                  leftTitles: AxisTitles(),
-                ),
-                lineBarsData: [
-                  LineChartBarData(
-                    gradient: const LinearGradient(
-                      colors: [
-                        Color.fromRGBO(211, 47, 47, 1),
-                        Color.fromRGBO(239, 154, 154, 1),
-                      ],
-                    ),
-                    isCurved: true,
-                    barWidth: 14,
-                    spots: createTemperatureSpots(),
+                      Text(
+                        _listeReleves.isNotEmpty
+                            ? '${_listeReleves.last.temperature}°C'
+                            : '-',
+                        style: TextStyle(
+                          fontSize: MediaQuery.of(context).size.height * 0.08,
+                          color: (_listeReleves.isNotEmpty && _highColor) &&
+                                  (_listeReleves.last.isTemperatureHigh() ||
+                                      _listeReleves.last.isTemperatureLow())
+                              ? Colors.red[600]
+                              : Colors.black,
+                        ),
+                      )
+                    ],
                   ),
-                  LineChartBarData(
-                    gradient: const LinearGradient(
-                      colors: [
-                        Color.fromRGBO(68, 138, 255, 1),
-                        Color.fromRGBO(41, 98, 255, 1),
-                      ],
-                    ),
-                    isCurved: true,
-                    color: Colors.lightBlueAccent[400],
-                    barWidth: 8,
-                    spots: createHumiditeSpots(),
-                  )
-                ],
-              ),
-              swapAnimationDuration: const Duration(microseconds: 150),
-              swapAnimationCurve: Curves.linear,
+                ),
+                Expanded(
+                  child: Column(
+                    children: <Widget>[
+                      Text(
+                        'Humidité',
+                        style: TextStyle(
+                          fontSize: MediaQuery.of(context).size.height * 0.05,
+                        ),
+                      ),
+                      Text(
+                        _listeReleves.isNotEmpty
+                            ? '${_listeReleves.last.humidite}%'
+                            : '-',
+                        style: TextStyle(
+                          fontSize: MediaQuery.of(context).size.height * 0.08,
+                          color: (_listeReleves.isNotEmpty && _highColor) &&
+                                  (_listeReleves.last.isHumiditeHigh() ||
+                                      _listeReleves.last.isHumiditeLow())
+                              ? Colors.red[600]
+                              : Colors.black,
+                        ),
+                      )
+                    ],
+                  ),
+                )
+              ],
             ),
           ),
-          // child: LineChart(
-          //   LineChartData(
-          //     lineBarsData: [
-          //       LineChartBarData(
-          //         isCurved: true,
-          //         barWidth: 8,
-          //         spots: [
-          //           FlSpot(1, 1),
-          //           FlSpot(3, 1.5),
-          //           FlSpot(5, 1.4),
-          //           FlSpot(7, 3.4),
-          //           FlSpot(10, 2),
-          //           FlSpot(12, 2.2),
-          //           FlSpot(13, 1.8),
-          //         ],
-          //       )
-          //     ],
-          //   ),
-          //   swapAnimationDuration: const Duration(microseconds: 150),
-          //   swapAnimationCurve: Curves.linear,
-          // ),
-          // child: ,
-        )
-      ],
+          Container(
+            padding: const EdgeInsets.only(top: 20),
+            child: AspectRatio(
+              aspectRatio: 3,
+              child: LineChart(
+                LineChartData(
+                  titlesData: FlTitlesData(
+                    bottomTitles: AxisTitles(),
+                    topTitles: AxisTitles(),
+                    leftTitles: AxisTitles(),
+                  ),
+                  lineBarsData: [
+                    LineChartBarData(
+                      gradient: const LinearGradient(
+                        colors: [
+                          Color.fromRGBO(211, 47, 47, 1),
+                          Color.fromRGBO(239, 154, 154, 1),
+                        ],
+                      ),
+                      isCurved: true,
+                      barWidth: 14,
+                      spots: createTemperatureSpots(),
+                    ),
+                    LineChartBarData(
+                      gradient: const LinearGradient(
+                        colors: [
+                          Color.fromRGBO(68, 138, 255, 1),
+                          Color.fromRGBO(41, 98, 255, 1),
+                        ],
+                      ),
+                      isCurved: true,
+                      color: Colors.lightBlueAccent[400],
+                      barWidth: 8,
+                      spots: createHumiditeSpots(),
+                    )
+                  ],
+                ),
+                swapAnimationDuration: const Duration(microseconds: 150),
+                swapAnimationCurve: Curves.linear,
+              ),
+            ),
+            // child: LineChart(
+            //   LineChartData(
+            //     lineBarsData: [
+            //       LineChartBarData(
+            //         isCurved: true,
+            //         barWidth: 8,
+            //         spots: [
+            //           FlSpot(1, 1),
+            //           FlSpot(3, 1.5),
+            //           FlSpot(5, 1.4),
+            //           FlSpot(7, 3.4),
+            //           FlSpot(10, 2),
+            //           FlSpot(12, 2.2),
+            //           FlSpot(13, 1.8),
+            //         ],
+            //       )
+            //     ],
+            //   ),
+            //   swapAnimationDuration: const Duration(microseconds: 150),
+            //   swapAnimationCurve: Curves.linear,
+            // ),
+            // child: ,
+          )
+        ],
+      ),
     );
   }
 }
