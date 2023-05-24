@@ -39,7 +39,7 @@ CONFIG_INFO = get_yaml_infos(CONFIG_FILE_PATH, ("email",))
 
 
 class Local:
-    def __init__(self, settings: dict) -> None:
+    def __init__(self, settings: dict, releves_file: str) -> None:
         try:
             if type(settings) != dict:
                 raise Exception("le paramètre renseigné doit être de type dict!")
@@ -70,28 +70,39 @@ class Local:
                 except ValueError:
                     raise Exception(f"la clé {t_property} n'est pas de type {t_type}")
 
+            if not path.isfile(releves_file):
+                raise Exception(f'le fichier "{releves_file}" n\'existe pas!')
+
         except Exception as err:
             raise err
 
         self.settings = settings_dict
+        self.releves_file = releves_file
 
     # TODO
     def __repr__(self) -> str:
         pass
 
-    # @property
-    # def id_local(self) -> int:
-    #     return self.settings.get("id_local", -1)
+    @property
+    def id(self) -> int:
+        return self.settings.get("id_local")
+
+    @property
+    def temperature(self) -> float:
+        ...
+
+    @property
+    def humidite(self) -> float:
+        ...
 
 
 settings = CONFIG_INFO.get("settings")
 
+# TODO ajouter tests unitaire
 try:
-    local = Local(settings)
-    print(local.settings)
+    local = Local(settings, RELEVES_FILE_PATH)
 except Exception as err:
-    print("Erreur lors de la création de l'objet,", err)
-
+    print("error:", err)
 
 # def get_dht_info() -> dict[str, float] | None:
 #     """ """
