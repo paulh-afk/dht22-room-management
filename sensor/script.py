@@ -1,7 +1,6 @@
 # Modules build-in
 from os import path
-import threading
-from queue import Queue
+
 from datetime import datetime
 from time import sleep
 
@@ -23,7 +22,6 @@ DEFAULT_COMPTEUR = 3
 DEFAULT_INTERVAL = 20
 
 horodatage = datetime.now()
-semaphore = threading.Semaphore()
 
 # Fichier de configuration
 CONFIG_FILENAME = "config.yaml"
@@ -37,8 +35,13 @@ RELEVES_FILE_PATH = path.join(RELEVES_FOLDER_PATH, RELEVES_FILENAME)
 
 CONFIG_INFO = get_yaml_infos(CONFIG_FILE_PATH, ("email",))
 
+import threading
+from queue import Queue
+
 
 class Local:
+    __queue_releve = Queue()
+
     def __init__(self, settings: dict, releves_file: str) -> None:
         try:
             if type(settings) != dict:
@@ -55,20 +58,20 @@ class Local:
             )
 
             for t in settings_properties:
-                t_property = t[0]
-                if not t_property in settings:
-                    raise Exception(f"la clé {t_property} n'a pas été trouvée!")
+                t_key = t[0]
+                if not t_key in settings:
+                    raise Exception(f'la clé "{t_key}" n\'a pas été trouvée!')
 
             settings_dict = {}
 
             for t in settings_properties:
                 try:
-                    t_property = t[0]
+                    t_key = t[0]
                     t_type = t[1]
 
-                    settings_dict[t_property] = t_type(settings.get(t_property))
+                    settings_dict[t_key] = t_type(settings.get(t_key))
                 except ValueError:
-                    raise Exception(f"la clé {t_property} n'est pas de type {t_type}")
+                    raise Exception(f'la clé "{t_key}" n\'est pas de type {t_type}')
 
             if not path.isfile(releves_file):
                 raise Exception(f'le fichier "{releves_file}" n\'existe pas!')
@@ -78,6 +81,29 @@ class Local:
 
         self.settings = settings_dict
         self.releves_file = releves_file
+
+    def get_last_dht_record(
+        self,
+        lock: threading.Lock,
+        keys=(
+            ("horodatage", datetime.fromisoformat),
+            ("temperature", float),
+            ("humidite", float),
+        ),
+    ) -> dict:
+        # implémenter sémaphore dans programme écriture
+        try:
+            lock.acquire()
+            result = get_last_csv_record(self.releves_file, keys)
+
+            self.__queue_releve.put(result)
+
+        except:
+            raise Exception("Une erreur s'est produite lors de la lecture du fichier")
+        finally:
+            lock.release()
+
+        return self.__queue_releve.get()
 
     # TODO
     def __repr__(self) -> str:
@@ -100,7 +126,9 @@ settings = CONFIG_INFO.get("settings")
 
 # TODO ajouter tests unitaire
 try:
-    local = Local(settings, RELEVES_FILE_PATH)
+    lock = threading.Lock()
+    local = Local(settings, "../csv_file.csv")
+    print(local.get_last_dht_record(lock))
 except Exception as err:
     print("error:", err)
 

@@ -35,20 +35,35 @@ def get_yaml_infos(file_path: str, fields: tuple) -> dict | None:
         return None
 
 
-def get_last_csv_record(filename: str) -> dict | None:
+def get_last_csv_record(filename: str, releves_properties: tuple) -> dict:
     try:
         with open(filename, "r") as csvfile:
             reader = csv.DictReader(csvfile)
             last_record = list(reader)[-1]
-            return {
-                "horodatate": last_record["horodatage"],
-                "temperature": float(last_record["temperature"]),
-                "humidity": float(last_record["humidite"]),
-            }
 
-    except Exception:
-        # Une erreur s'est produite lors de la lecture du fichier
-        return None
+            for t in releves_properties:
+                t_key = t[0]
+                if not t_key in last_record.keys():
+                    raise Exception(f'la clé "{t_key}" n\'a pas été trouvée!')
+
+            releves_dict = {}
+
+            for t in releves_properties:
+                try:
+                    t_key = t[0]
+                    t_type = t[1]
+
+                    releves_dict[t_key] = t_type(last_record.get(t_key))
+                except ValueError:
+                    raise Exception(f'la clé "{t_key}" n\'est pas de type {t_type}')
+
+            return releves_dict
+
+    except FileNotFoundError:
+        raise Exception("Le fichier spécifier n'existe pas!")
+
+    except Exception as err:
+        raise err
 
 
 # TODO review function
