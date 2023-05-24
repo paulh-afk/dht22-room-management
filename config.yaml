@@ -1,0 +1,31 @@
+---
+settings:
+  id_local: 1
+  seuil_temperature_min: 10
+  seuil_temperature_max: 30
+  seuil_humidite_min: 40
+  seuil_humidite_max: 70
+  compteur: 1
+  interval_secondes: 10
+
+database:
+  host: 172.20.10.6
+  port: 3306
+  user: Gestionnaire
+  password: Password123
+  database: gestionstock
+
+email:
+  sender: lemonnierfoyer@gmail.com
+  password: olzlpoaimssfsapy
+  destinations:
+    - lemonnierfoyer@gmail.com
+    - paul.helleu@eleves.institutlemonnier.fr
+    - doryan.planchon@eleves.institutlemonnier.fr
+    - robin.dequaindry@eleves.institutlemonnier.fr
+    - alexandre.de-brou@eleves.institutlemonnier.fr
+    - lucas.foucault@eleves.institutlemonnier.fr
+    - simon.germain@eleves.institutlemonnier.fr
+    - matis.lebeurrier@eleves.institutlemonnier.fr
+  server_addr: smtp.gmail.com
+  server_port: 587
