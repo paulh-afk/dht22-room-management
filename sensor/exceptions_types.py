@@ -22,3 +22,12 @@ class EmailUndeliverableException(Exception):
     def __init__(self, email: str) -> None:
         message = f"l'adresse email \"{email}\" n'est pas délivrable"
         super().__init__(message)
+
+
+class NoMeasuresException(Exception):
+    def __init__(self, err_msg: str) -> None:
+        message = (
+            err_msg
+            + "\nAssurez-vous d'avoir lancé le script d'acquisition des données du capteur DHT22"
+        )
+        super().__init__(message)

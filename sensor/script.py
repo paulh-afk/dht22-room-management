@@ -3,11 +3,10 @@ from os import path
 from time import sleep, time
 from datetime import datetime
 
-from board import D4
-from adafruit_dht import DHT22
-
+# Constantes
 from constants import *
 
+# Modules crée
 from Local import Local
 from utils import get_yaml_infos
 from mail import send_mail
@@ -41,7 +40,9 @@ try:
 
     while True:
         if count == 0:
-            exit()
+            raise NoMeasuresException(
+                f"Aucun releves n'a été ajouter dans le fichier {releves_file_path} depuis {NO_REPLY_MAX * 3} secondes."
+            )
 
         horodatage_delayed = datetime.fromtimestamp(time() - MAX_HORODATAGE_GAP)
         horodatage_last_record: datetime = dht_infos.get("horodatage")
@@ -51,11 +52,12 @@ try:
 
         if horodatage_delayed.timestamp() > horodatage_last_record.timestamp():
             count -= 1
+            sleep(3)
         else:
             break
 
     # Insertion des derniers données du fichier dans la base de données
-    # local.send_dht_infos_db(db_info)
+    local.send_dht_infos_db(db_info)
 
     count = local.settings.get("compteur", DEFAULT_COMPTEUR)
     interval = local.settings.get("interval_secondes", DEFAULT_INTERVAL)
@@ -63,12 +65,11 @@ try:
     while count >= 1:
         dht_infos = local.get_last_dht_record()
 
-        # None ?
-        temperature = dht_infos["temperature"]
+        temperature = dht_infos.get("temperature")
         seuil_temperature_min = False
         seuil_temperature_max = False
 
-        humidity = dht_infos["humidite"]
+        humidity = dht_infos.get("humidite")
         seuil_humidity_min = False
         seuil_humidity_max = False
 
@@ -144,6 +145,7 @@ try:
             )
 
         send_mail(email_info, subject, body)
+
 
 except Exception as err:
     print("Erreur:", err)
