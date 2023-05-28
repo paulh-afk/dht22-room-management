@@ -1,15 +1,20 @@
 # Modules build-in
 from os import path
 
-from datetime import datetime
 from time import sleep
+import re
 
 # Modules installés
-from mysql import connector
+# from board import D4
+# from adafruit_dht import DHT22
+
+from email_validator import validate_email, EmailUndeliverableError
+from Local import Local
 
 # Modules
-from utils import get_yaml_infos, get_last_csv_record
-from mail import send_mail
+from utils import get_yaml_infos, get_last_csv_record, check_properties
+
+from exceptions_types import *
 
 # Valeurs par défaut
 DEFAULT_TEMPERATURE_LOW_LIMIT = 0.0
@@ -21,7 +26,7 @@ DEFAULT_HUMIDITY_HIGH_LIMIT = 70.0
 DEFAULT_COMPTEUR = 3
 DEFAULT_INTERVAL = 20
 
-horodatage = datetime.now()
+DEFAULT_LOCAL = "Local non identifié"
 
 # Fichier de configuration
 CONFIG_FILENAME = "config.yaml"
@@ -39,96 +44,48 @@ import threading
 from queue import Queue
 
 
-class Local:
-    __queue_releve = Queue()
+class Email:
+    def __init__(self, email_str: str) -> None:
+        if not re.match(r"[^@]+@[^@]+\.[^@]+", email_str):
+            raise InvalidEmailException(email_str)
 
-    def __init__(self, settings: dict, releves_file: str) -> None:
-        try:
-            if type(settings) != dict:
-                raise Exception("le paramètre renseigné doit être de type dict!")
+        email_split = email_str.split("@")
 
-            settings_properties = (
-                ("id_local", int),
-                ("seuil_temperature_min", float),
-                ("seuil_temperature_max", float),
-                ("seuil_humidite_max", float),
-                ("seuil_humidite_min", float),
-                ("compteur", int),
-                ("interval_secondes", float),
-            )
+        self.id = email_split[0]
+        self.provider = email_split[1]
+        self.address = email_str
 
-            for t in settings_properties:
-                t_key = t[0]
-                if not t_key in settings:
-                    raise Exception(f'la clé "{t_key}" n\'a pas été trouvée!')
-
-            settings_dict = {}
-
-            for t in settings_properties:
-                try:
-                    t_key = t[0]
-                    t_type = t[1]
-
-                    settings_dict[t_key] = t_type(settings.get(t_key))
-                except ValueError:
-                    raise Exception(f'la clé "{t_key}" n\'est pas de type {t_type}')
-
-            if not path.isfile(releves_file):
-                raise Exception(f'le fichier "{releves_file}" n\'existe pas!')
-
-        except Exception as err:
-            raise err
-
-        self.settings = settings_dict
-        self.releves_file = releves_file
-
-    def get_last_dht_record(
-        self,
-        lock: threading.Lock,
-        keys=(
-            ("horodatage", datetime.fromisoformat),
-            ("temperature", float),
-            ("humidite", float),
-        ),
-    ) -> dict:
-        # implémenter sémaphore dans programme écriture
-        try:
-            lock.acquire()
-            result = get_last_csv_record(self.releves_file, keys)
-
-            self.__queue_releve.put(result)
-
-        except:
-            raise Exception("Une erreur s'est produite lors de la lecture du fichier")
-        finally:
-            lock.release()
-
-        return self.__queue_releve.get()
-
-    # TODO
     def __repr__(self) -> str:
-        pass
-
-    @property
-    def id(self) -> int:
-        return self.settings.get("id_local")
-
-    @property
-    def temperature(self) -> float:
-        ...
-
-    @property
-    def humidite(self) -> float:
-        ...
+        return self.address
 
 
 settings = CONFIG_INFO.get("settings")
+db_info = CONFIG_INFO.get("database")
+email_info = CONFIG_INFO.get("email")
 
 # TODO ajouter tests unitaire
+# try:
+#     local = Local(settings, RELEVES_FILE_PATH)
+#     print(local.id)
+#     print(local.get_localname(db_info))
+# except Exception as err:
+#     print("error:", err)
+
+
 try:
-    lock = threading.Lock()
-    local = Local(settings, "../csv_file.csv")
-    print(local.get_last_dht_record(lock))
+    local = Local(settings, RELEVES_FILE_PATH)
+
+    # dans le main
+    try:
+        local_name = local.get_localname(db_info)
+
+    except Exception:
+        # revoir args
+        local_name = DEFAULT_LOCAL
+
+    # local.send_dht_infos(db_info)
+    local.send_email_alert(email_info, "TEST", "TEST")
+
 except Exception as err:
     print("error:", err)
 

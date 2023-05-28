@@ -1,6 +1,49 @@
 import yaml
 import csv
+
+from datetime import datetime
 from mysql import connector
+from email_validator import validate_email, EmailUndeliverableError, EmailSyntaxError
+
+
+from exceptions_types import *
+
+
+class Email:
+    def __init__(self, email_str: str) -> None:
+        if not re.match(r"[^@]+@[^@]+\.[^@]+", email_str):
+            raise TypeError(f"le mail {email_str} n'est pas valide")
+
+        email_split = email_str.split("@")
+
+        self.id = email_split[0]
+        self.provider = email_split[1]
+
+
+def check_properties(properties: tuple[tuple], settings: dict) -> dict:
+    for t in properties:
+        t_key = t[0]
+        if not t_key in settings:
+            raise Exception(f'la clé "{t_key}" n\'a pas été trouvée!')
+
+    result = {}
+
+    for t in properties:
+        try:
+            t_key = t[0]
+            t_type = t[1]
+
+            result[t_key] = t_type(settings.get(t_key))
+
+        except EmailSyntaxError:
+            raise InvalidEmailException(settings.get(t_key))
+
+        except ValueError:
+            raise TypeError(
+                f'la valeur de la clé "{t_key}" n\'est pas de type {t_type}'
+            )
+
+    return result
 
 
 def get_yaml_infos(file_path: str, fields: tuple) -> dict | None:
@@ -64,6 +107,65 @@ def get_last_csv_record(filename: str, releves_properties: tuple) -> dict:
 
     except Exception as err:
         raise err
+
+
+def csvfile_to_datas(filename: str):
+    try:
+        with open(filename, "r") as csvfile:
+            datas = []
+            spamreader = csv.DictReader(csvfile)
+
+            for record in spamreader:
+                horodatage = datetime.strptime(
+                    record["horodatage"], "%Y-%m-%d %H:%M:%S"
+                )
+
+                datas.append(
+                    {
+                        "horodatage": horodatage,
+                        "temperature": record["temperature"],
+                        "humidite": record["humidite"],
+                    }
+                )
+
+            return datas
+
+    except FileNotFoundError:
+        raise Exception("fichier non trouvé")
+
+    except Exception:
+        raise Exception(f"erreur lors de la lecture du fichier {filename}")
+
+
+def add_data(
+    filename: str,
+    temperature: float,
+    humidite: float,
+    fieldnames: list = ["horodatage", "temperature", "humidite"],
+    records: int = 30,
+):
+    horodatage = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+    csv_data = csvfile_to_datas()
+
+    while len(csv_data) >= records:
+        csv_data.pop(0)
+
+    csv_data.append(
+        {"horodatage": horodatage, "temperature": temperature, "humidite": humidite}
+    )
+
+    try:
+        with open(filename, "w+", newline="") as csvfile:
+            csvwriter = csv.DictWriter(csvfile, fieldnames)
+
+            csvwriter.writeheader()
+            csvwriter.writerows(csv_data)
+
+    except FileNotFoundError:
+        raise Exception("fichier non trouvé")
+
+    except Exception:
+        raise Exception(f"erreur lors de la lecture du fichier {filename}")
 
 
 # TODO review function
