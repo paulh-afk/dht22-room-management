@@ -13,27 +13,27 @@ from exceptions_types import *
 
 
 class Local:
-    def __init__(self, settings: dict, releves_file: str) -> None:
+    def __init__(self, settings: dict, releves_file_path: str) -> None:
         if not isinstance(settings, dict):
             raise Exception("le paramètre renseigné doit être de type dict")
 
         settings_required_properties = (
             ("id_local", int),
-            # ("seuil_temperature_min", float),
-            # ("seuil_temperature_max", float),
-            # ("seuil_humidite_max", float),
-            # ("seuil_humidite_min", float),
-            # ("compteur", int),
-            # ("interval_secondes", float),
+            ("seuil_temperature_min", float),
+            ("seuil_temperature_max", float),
+            ("seuil_humidite_max", float),
+            ("seuil_humidite_min", float),
+            ("compteur", int),
+            ("interval_secondes", float),
         )
 
         settings_dict = check_properties(settings_required_properties, settings)
 
-        if not path.isfile(releves_file):
-            raise Exception(f'le fichier "{releves_file}" n\'existe pas!')
+        if not path.isfile(releves_file_path):
+            raise Exception(f'le fichier "{releves_file_path}" n\'existe pas!')
 
         self.settings = settings_dict
-        self.releves_file = releves_file
+        self.releves_file = releves_file_path
 
     def __repr__(self) -> str:
         return f"local {self.id}"
@@ -75,7 +75,7 @@ class Local:
     def is_humidity_low(self, humidity: float, default_value: float) -> bool:
         return humidity < self.settings.get("seuil_humidite_min", default_value)
 
-    def send_dht_infos(self, db_info: dict):
+    def send_dht_infos_db(self, db_info: dict):
         db_properties = (
             ("host", str),
             ("port", int),
@@ -146,37 +146,3 @@ class Local:
         except connector.Error as e:
             # Créer MySQL Exception
             raise Exception(f"Erreur lors de la récupération du nom du local : {e}")
-
-    def send_email_alert(self, email_info: dict, subject: str, body: str) -> None:
-        email_properties = (
-            ("sender", validate_email),
-            ("password", str),
-            ("server_addr", str),
-            ("server_port", int),
-        )
-        email_destinations_key_name = "destinations"
-        email_destinations = email_info.get(email_destinations_key_name)
-
-        if email_destinations == None:
-            raise MissingKeyException(email_destinations_key_name)
-
-        if not isinstance(email_destinations, list):
-            raise TypeError(
-                f'La valeur de "{email_destinations_key_name}" n\' est pas une liste'
-            )
-
-        destinations_emails = []
-
-        try:
-            for destination_email in email_destinations:
-                validate_email(destination_email)
-                destinations_emails.append(destination_email)
-        except EmailSyntaxError:
-            raise InvalidEmailDestinationsException(destination_email)
-        except EmailUndeliverableError:
-            raise EmailUndeliverableException(destination_email)
-
-        email_dict = check_properties(email_properties, email_info)
-        email_dict["destinations"] = destinations_emails
-
-        send_mail(email_dict, subject, body)
