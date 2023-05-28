@@ -6,11 +6,12 @@ from datetime import datetime
 # Constantes
 from constants import *
 
-# Modules crée
+# Modules créés
 from Local import Local
 from utils import get_yaml_infos
 from mail import send_mail
 
+# Exceptions
 from exceptions_types import *
 
 # Chemin fichier de configuration
