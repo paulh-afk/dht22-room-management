@@ -191,8 +191,8 @@ class _AffichageDataState extends State<AffichageData> {
                           color: (_listeReleves.isNotEmpty && _highColor) &&
                                   (_listeReleves.last.isTemperatureHigh() ||
                                       _listeReleves.last.isTemperatureLow())
-                              ? Colors.red[600]
-                              : Colors.black,
+                              ? Colors.black
+                              : Colors.red[600],
                         ),
                       )
                     ],
@@ -216,8 +216,8 @@ class _AffichageDataState extends State<AffichageData> {
                           color: (_listeReleves.isNotEmpty && _highColor) &&
                                   (_listeReleves.last.isHumiditeHigh() ||
                                       _listeReleves.last.isHumiditeLow())
-                              ? Colors.red[600]
-                              : Colors.black,
+                              ? Colors.black
+                              : Colors.blue,
                         ),
                       )
                     ],
