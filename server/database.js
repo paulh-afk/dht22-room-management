@@ -1,40 +1,52 @@
 const { Sequelize, DataTypes } = require('sequelize');
+const { getConfig } = require('./config');
 
-try {
-  const sequelize = new Sequelize('gestionstock', 'Gestionnaire', 'Password123', {
-    host: '172.20.10.6',
-    dialect: 'mysql',
-  });
+const initializeDatabase = async () => {
+  try {
+    const config = await getConfig();
 
-  const Locals = sequelize.define(
-    'locals',
-    {
-      id: {
-        primaryKey: true,
-        type: DataTypes.INTEGER,
+    const { host, port, user, password, database } = config.database;
+
+    const sequelize = new Sequelize(database, user, password, {
+      host,
+      port,
+      dialect: 'mysql',
+    });
+
+    await sequelize.authenticate();
+
+    const Locals = sequelize.define(
+      'locals',
+      {
+        id: {
+          primaryKey: true,
+          type: DataTypes.INTEGER,
+        },
+        nom_local: DataTypes.CHAR,
       },
-      nom_local: DataTypes.CHAR,
-    },
-    { timestamps: false },
-  );
+      { timestamps: false },
+    );
 
-  const RelevesLocals = sequelize.define(
-    'releves_locals',
-    {
-      id: {
-        primaryKey: true,
-        type: DataTypes.INTEGER,
+    const RelevesLocals = sequelize.define(
+      'releves_locals',
+      {
+        id: {
+          primaryKey: true,
+          type: DataTypes.INTEGER,
+        },
+        id_local: DataTypes.INTEGER,
+        temperature: DataTypes.DOUBLE,
+        humidity: DataTypes.DOUBLE,
+        horodatage: DataTypes.TIME,
       },
-      id_local: DataTypes.INTEGER,
-      temperature: DataTypes.DOUBLE,
-      humidity: DataTypes.DOUBLE,
-      horodatage: DataTypes.TIME,
-    },
-    { timestamps: false },
-  );
+      { timestamps: false },
+    );
 
-  exports.Locals = Locals;
-  exports.RelevesLocals = RelevesLocals;
-} catch ({ message }) {
-  console.error(message);
-}
+    return { Locals, RelevesLocals };
+  } catch (error) {
+    console.error('Erreur lors de la connexion à la base de données:', error);
+    throw error;
+  }
+};
+
+module.exports = initializeDatabase;

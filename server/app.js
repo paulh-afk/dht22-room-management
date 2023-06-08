@@ -2,20 +2,19 @@ const express = require('express');
 const cors = require('cors');
 const csv = require('csvtojson');
 const path = require('path');
-const fs = require('fs');
-const yaml = require('yaml');
-const { Locals, RelevesLocals } = require('./database');
+const initializeDatabase = require('./database');
+const { getConfig, updateConfig } = require('./config');
 
 const app = express();
 
 app.use(cors());
+app.use(express.json());
 
-const CSV_FILE_PATH = path.resolve('../releves.csv');
-const CONFIG_FILE_PATH = path.resolve('../config.yaml');
+app.get('/releves', (req, res, next) => {
+  const csvFilePath = path.resolve('../releves.csv');
 
-app.get('/releves', async (req, res, next) => {
-  await csv()
-    .fromFile(CSV_FILE_PATH)
+  csv()
+    .fromFile(csvFilePath)
     .then((releves) => {
       releves.map((releve, index) => {
         const temperature = Number(releve['temperature']);
@@ -41,43 +40,127 @@ app.get('/releves', async (req, res, next) => {
         }
       });
 
-      res.json({ status: 'OK', releves });
+      res.json({ ok: true, releves });
     })
     .catch(({ message }) => {
-      res.json({ status: 'KO', message });
+      res.json({ ok: false, message });
     });
 });
 
 app.get('/config', (req, res, next) => {
-  const configFile = fs.readFileSync(CONFIG_FILE_PATH, 'utf8');
-  res.json(yaml.parse(configFile));
+  getConfig()
+    .then((config) => {
+      res.json(config);
+    })
+    .catch(({ message }) => {
+      res.json({ ok: false, message });
+    });
 });
 
-app.post('updateconfig', (req, res, next) => {
+app.post('/updateconfig', (req, res, next) => {
   const body = req.body;
-  console.log(body);
-});
-
-app.get('/localname/:nom_local', (req, res, next) => {
-  const { nom_local } = req.params;
+  let bodyKey;
+  let bodyValue;
 
   try {
-    if (!nom_local) {
-      throw Error('Le paramètre contenant le nom du local est attendu!');
+    if (Object.keys(body).length !== 1) {
+      throw Error('Un seul paramètre peut être envoyé');
+    }
+
+    bodyKey = Object.keys(body)[0];
+    bodyValue = Object.values(body)[0];
+
+    if (bodyKey.split('.').length !== 2) {
+      throw Error(`La clé "${bodyKey}" n'a pas le bon format`);
     }
   } catch ({ message }) {
-    res.json({ status: 'KO', message });
+    res.status(400).json({ ok: false, message });
+    return;
   }
 
-  Locals.findOne({ where: { nom_local } })
+  const keysIncluded = [
+    [
+      'settings',
+      [
+        'id_local',
+        'seuil_temperature_min',
+        'seuil_temperature_max',
+        'seuil_humidite_min',
+        'seuil_humidite_max',
+        'compteur',
+        'interval_secondes',
+      ],
+    ],
+    ['database', ['host', 'port', 'user', 'password', 'database']],
+    ['email', ['sender', 'password', 'destinations', 'server_addr', 'server_port']],
+  ];
+
+  let check = false;
+  const bodyKeySplited = bodyKey.split('.');
+
+  for (let keyIncluded of keysIncluded) {
+    const categorie = keyIncluded[0];
+    const properties = keyIncluded[1];
+
+    for (let property of properties) {
+      if (bodyKeySplited[0] === categorie && bodyKeySplited[1] === property) {
+        check = true;
+        break;
+      }
+    }
+
+    if (check) {
+      break;
+    }
+  }
+
+  try {
+    if (!check) {
+      throw Error('Les données envoyés ne sont pas valide');
+    }
+  } catch ({ message }) {
+    res.status(400).json({ ok: false, message });
+    return;
+  }
+
+  getConfig()
+    .then((config) => {
+      const [categ, proper] = bodyKey.split('.');
+      config[categ][proper] = bodyValue;
+
+      updateConfig(config);
+    })
+    .catch(({ message }) => {
+      res.json({ ok: false, message });
+      return;
+    });
+
+  res.status(200).json({ ok: true });
+});
+
+app.get('/localname/:id_local', async (req, res, next) => {
+  const { id_local } = req.params;
+
+  try {
+    if (!id_local) {
+      throw Error("Le paramètre contenant l'identifiant est attendu");
+    }
+  } catch ({ message }) {
+    res.json({ ok: false, message });
+    return;
+  }
+
+  const { Locals } = await initializeDatabase();
+
+  Locals.findOne({ where: { id: id_local } })
     .then((local) => {
       if (!local) {
-        throw Error("Aucun local pourtant ce nom n'a été trouvé!");
+        throw Error("Aucun local portant ce nom n'a été trouvé!");
       }
 
-      res.json({ status: 'OK', local });
+      res.json({ ok: true, local });
     })
-    .catch(({ message }) => res.json({ status: 'KO', message }));
+    .catch(({ message }) => res.json({ ok: false, message }));
 });
 
 app.listen(4000);
