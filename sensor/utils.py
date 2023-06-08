@@ -103,7 +103,7 @@ def get_last_csv_record(filename: str, releves_properties: tuple) -> dict:
             return releves_dict
 
     except FileNotFoundError:
-        raise Exception("Le fichier spécifier n'existe pas!")
+        raise Exception("Le fichier spécifié n'existe pas!")
 
     except Exception as err:
         raise err

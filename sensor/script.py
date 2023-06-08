@@ -1,4 +1,4 @@
-# Modules build-in
+# Modules standard
 from os import path
 from time import sleep, time
 from datetime import datetime
@@ -28,6 +28,9 @@ releves_file_path = path.join(releves_folder_path, RELEVES_FILENAME)
 
 config_info = get_yaml_infos(config_file_path, ("email",))
 
+if config_info is None:
+    print("Aucun email n'a été renseigné")
+
 settings = config_info.get("settings")
 db_info = config_info.get("database")
 email_info = config_info.get("email")
@@ -42,15 +45,17 @@ try:
     while True:
         if count == 0:
             raise NoMeasuresException(
+                f"Aucun relevé n'a été ajouté dans le fichier {releves_file_path} depuis {NO_REPLY_MAX * 3} secondes.",
                 dht_infos.get("horodatage"),
-                f"Aucun releves n'a été ajouter dans le fichier {releves_file_path} depuis {NO_REPLY_MAX * 3} secondes.",
             )
 
         horodatage_delayed = datetime.fromtimestamp(time() - MAX_HORODATAGE_GAP)
         horodatage_last_record: datetime = dht_infos.get("horodatage")
 
         if not isinstance(horodatage_delayed, datetime):
-            raise Exception("Le dernier enregistrement ne contient pas d'horodatage")
+            raise NoMeasuresException(
+                "Le dernier enregistrement ne contient pas d'horodatage"
+            )
 
         if horodatage_delayed.timestamp() > horodatage_last_record.timestamp():
             count -= 1
@@ -59,7 +64,10 @@ try:
             break
 
     # Insertion des derniers données du fichier dans la base de données
-    local.send_sensor_data_to_db(db_info)
+    try:
+        local.send_sensor_data_to_db(db_info)
+    except Exception as err:
+        print("Erreur db:", err)
 
     count = local.settings.get("compteur", DEFAULT_COMPTEUR)
     interval = local.settings.get("interval_secondes", DEFAULT_INTERVAL)
@@ -76,17 +84,17 @@ try:
         seuil_humidity_max = False
 
         # Conditions température
-        if local.is_above_max_temperature(temperature, DEFAULT_TEMPERATURE_HIGH_LIMIT):
+        if local.is_above_max_temperature(temperature):
             seuil_temperature_max = True
 
-        if local.is_below_min_temperature(temperature, DEFAULT_TEMPERATURE_LOW_LIMIT):
+        if local.is_below_min_temperature(temperature):
             seuil_temperature_min = True
 
         # Conditions humidité
-        if local.is_above_max_humidity(humidity, DEFAULT_HUMIDITY_HIGH_LIMIT):
+        if local.is_above_max_humidity(humidity):
             seuil_humidity_max = True
 
-        if local.is_below_min_humidity(humidity, DEFAULT_HUMIDITY_LOW_LIMIT):
+        if local.is_below_min_humidity(humidity):
             seuil_humidity_min = True
 
         if (
@@ -152,6 +160,7 @@ try:
 
         send_mail(email_info, subject, body)
 
+# Aucune mesure dans le fichier
 except NoMeasuresException as err:
     try:
         local_name = local.get_local_name(db_info)
@@ -160,10 +169,15 @@ except NoMeasuresException as err:
 
     subject = "ALERTE dans le local " + local_name
     body = (
-        f"Le capteur DHT22 ne répond pas, ca dernière mesure date de {err.horodatage}"
+        f"Le capteur DHT22 ne répond pas, sa dernière mesure date de {err.horodatage}."
     )
 
-    send_mail(email_info, subject, body)
+    try:
+        send_mail(email_info, subject, body)
+
+    except Exception as err:
+        raise err
+
     print("Erreur:", err)
 
 except Exception as err:

@@ -9,14 +9,14 @@ DEFAULT_HUMIDITY_HIGH_LIMIT = 70.0
 # Valeur par défaut compteur
 DEFAULT_COMPTEUR = 3
 
-# Valeur par défaut interval
+# Valeur par défaut intervalle
 DEFAULT_INTERVAL = 20
 
-# Nombre maximum de requêtes au capteur sans réponse
+# Compteur du nombre de demandes avant envoie alerte
 NO_REPLY_MAX = 7
 
 # Ecart maximum en secondes
-MAX_HORODATAGE_GAP = 20
+MAX_HORODATAGE_GAP = 2 * 60
 
 # Nom du local si non identifié
 DEFAULT_LOCAL = "Local non identifié"

@@ -38,14 +38,14 @@ def send_mail(email_info: dict, subject: str, body: str) -> None:
 
     destinations_emails = []
 
-    try:
-        for destination_email in email_destinations:
-            validate_email(destination_email)
-            destinations_emails.append(destination_email)
-    except EmailSyntaxError:
-        raise InvalidEmailDestinationsException(destination_email)
-    except EmailUndeliverableError:
-        raise EmailUndeliverableException(destination_email)
+    for destination_email in email_destinations:
+        # try:
+        #     validate_email(destination_email)
+        destinations_emails.append(destination_email)
+        # except EmailSyntaxError:
+        #     raise InvalidEmailDestinationsException(destination_email)
+        # except EmailUndeliverableError:
+        #     raise EmailUndeliverableException(destination_email)
 
     email_dict = check_properties(email_properties, email_info)
     email_dict["destinations"] = destinations_emails
