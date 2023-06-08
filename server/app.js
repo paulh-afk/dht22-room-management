@@ -2,6 +2,8 @@ const express = require('express');
 const cors = require('cors');
 const csv = require('csvtojson');
 const path = require('path');
+const fs = require('fs');
+const yaml = require('yaml');
 const { Locals, RelevesLocals } = require('./database');
 
 const app = express();
@@ -9,6 +11,7 @@ const app = express();
 app.use(cors());
 
 const CSV_FILE_PATH = path.resolve('../releves.csv');
+const CONFIG_FILE_PATH = path.resolve('../config.yaml');
 
 app.get('/releves', async (req, res, next) => {
   await csv()
@@ -43,6 +46,16 @@ app.get('/releves', async (req, res, next) => {
     .catch(({ message }) => {
       res.json({ status: 'KO', message });
     });
+});
+
+app.get('/config', (req, res, next) => {
+  const configFile = fs.readFileSync(CONFIG_FILE_PATH, 'utf8');
+  res.json(yaml.parse(configFile));
+});
+
+app.post('updateconfig', (req, res, next) => {
+  const body = req.body;
+  console.log(body);
 });
 
 app.get('/localname/:nom_local', (req, res, next) => {

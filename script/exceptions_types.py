@@ -25,8 +25,7 @@ class EmailUndeliverableException(Exception):
 
 
 class NoMeasuresException(Exception):
-    def __init__(self, horodatage: str, err_msg: str) -> None:
-        self.horodatage = horodatage
+    def __init__(self, err_msg: str) -> None:
         message = (
             err_msg
             + "\nAssurez-vous d'avoir lancé le script d'acquisition des données du capteur DHT22"

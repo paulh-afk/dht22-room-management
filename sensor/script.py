@@ -37,12 +37,13 @@ count = NO_REPLY_MAX
 
 try:
     local = Local(settings, releves_file_path)
-    dht_infos = local.get_last_dht_record()
+    dht_infos = local.get_last_sensor_reading()
 
     while True:
         if count == 0:
             raise NoMeasuresException(
-                f"Aucun releves n'a été ajouter dans le fichier {releves_file_path} depuis {NO_REPLY_MAX * 3} secondes."
+                dht_infos.get("horodatage"),
+                f"Aucun releves n'a été ajouter dans le fichier {releves_file_path} depuis {NO_REPLY_MAX * 3} secondes.",
             )
 
         horodatage_delayed = datetime.fromtimestamp(time() - MAX_HORODATAGE_GAP)
@@ -58,13 +59,13 @@ try:
             break
 
     # Insertion des derniers données du fichier dans la base de données
-    local.send_dht_infos_db(db_info)
+    local.send_sensor_data_to_db(db_info)
 
     count = local.settings.get("compteur", DEFAULT_COMPTEUR)
     interval = local.settings.get("interval_secondes", DEFAULT_INTERVAL)
 
     while count >= 1:
-        dht_infos = local.get_last_dht_record()
+        dht_infos = local.get_last_sensor_reading()
 
         temperature = dht_infos.get("temperature")
         seuil_temperature_min = False
@@ -75,17 +76,17 @@ try:
         seuil_humidity_max = False
 
         # Conditions température
-        if local.is_temperature_high(temperature, DEFAULT_TEMPERATURE_HIGH_LIMIT):
+        if local.is_above_max_temperature(temperature, DEFAULT_TEMPERATURE_HIGH_LIMIT):
             seuil_temperature_max = True
 
-        if local.is_temperature_low(temperature, DEFAULT_TEMPERATURE_LOW_LIMIT):
+        if local.is_below_min_temperature(temperature, DEFAULT_TEMPERATURE_LOW_LIMIT):
             seuil_temperature_min = True
 
         # Conditions humidité
-        if local.is_humidity_high(humidity, DEFAULT_HUMIDITY_HIGH_LIMIT):
+        if local.is_above_max_humidity(humidity, DEFAULT_HUMIDITY_HIGH_LIMIT):
             seuil_humidity_max = True
 
-        if local.is_humidity_low(humidity, DEFAULT_HUMIDITY_LOW_LIMIT):
+        if local.is_below_min_humidity(humidity, DEFAULT_HUMIDITY_LOW_LIMIT):
             seuil_humidity_min = True
 
         if (
@@ -100,7 +101,11 @@ try:
         sleep(interval)
 
     if count == 0:
-        local_name = local.get_localname(db_info)
+        try:
+            local_name = local.get_local_name(db_info)
+        except Exception:
+            local_name = DEFAULT_LOCAL
+
         horodatage = datetime.now()
 
         if seuil_temperature_max:
@@ -147,6 +152,19 @@ try:
 
         send_mail(email_info, subject, body)
 
+except NoMeasuresException as err:
+    try:
+        local_name = local.get_local_name(db_info)
+    except Exception:
+        local_name = DEFAULT_LOCAL
+
+    subject = "ALERTE dans le local " + local_name
+    body = (
+        f"Le capteur DHT22 ne répond pas, ca dernière mesure date de {err.horodatage}"
+    )
+
+    send_mail(email_info, subject, body)
+    print("Erreur:", err)
 
 except Exception as err:
     print("Erreur:", err)

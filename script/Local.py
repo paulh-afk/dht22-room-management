@@ -1,11 +1,9 @@
 from os import path
 from datetime import datetime
 
-# from board import D4
-# from adafruit_dht import DHT22
+from board import D4
+from adafruit_dht import DHT22
 from mysql import connector
-
-from utils import get_last_csv_record, check_properties
 
 from constants import (
     DEFAULT_TEMPERATURE_HIGH_LIMIT,
@@ -88,7 +86,7 @@ class Local:
 
         except connector.Error as e:
             # Créer MySQL Exception
-            raise Exception(f"erreur lors de la récupération du nom du local : {e}")
+            raise Exception(f"Erreur lors de la récupération du nom du local : {e}")
 
     def get_last_sensor_reading(
         self,
