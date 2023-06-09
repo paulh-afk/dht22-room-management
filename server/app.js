@@ -150,17 +150,19 @@ app.get('/localname/:id_local', async (req, res, next) => {
     return;
   }
 
-  const { Locals } = await initializeDatabase();
+  try {
+    const { Locals } = await initializeDatabase();
 
-  Locals.findOne({ where: { id: id_local } })
-    .then((local) => {
+    Locals.findOne({ where: { id: id_local } }).then((local) => {
       if (!local) {
-        throw Error("Aucun local portant ce nom n'a été trouvé!");
+        throw Error("Aucun local portant ce nom n'a été trouvé");
       }
 
       res.json({ ok: true, local });
-    })
-    .catch(({ message }) => res.json({ ok: false, message }));
+    });
+  } catch ({ message }) {
+    res.json({ ok: false, message });
+  }
 });
 
 app.listen(4000);

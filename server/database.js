@@ -44,8 +44,7 @@ const initializeDatabase = async () => {
 
     return { Locals, RelevesLocals };
   } catch (error) {
-    console.error('Erreur lors de la connexion à la base de données:', error);
-    throw error;
+    throw Error('Erreur lors de la connexion à la base de données');
   }
 };
 
